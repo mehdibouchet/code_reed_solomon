@@ -1,4 +1,5 @@
 from sage.misc.prandom import randint
+
 import random
 
 def field_random_element_distinct(K, s):
@@ -31,6 +32,9 @@ class Canal:
             return vector(y)
 
         return q_canal
+
+#     def send_canal(x):
+#         return self(x)
 
 class ReedSolomon:
     def __init__(self, F_q, k, x):
@@ -66,8 +70,8 @@ class ReedSolomon:
         M.append(v_i)
 
         M= matrix(F_q, M)
-        b= vector(F_q, [0]*(n)+[1])
-        V= M.augment(b, subdivide=True)
+        b= column_matrix(vector([0]*(n)+[1])).change_ring(F_q)
+        V= M.augment(b)
         V= V.rref()
 
         A= R( V[:t+1, -1].list() )
@@ -151,7 +155,7 @@ class ReedSolomon:
 
 #         return vector(y)
 
-q= 7
+q= 11
 n= 7
 k= 3
 # k= n - t*2
@@ -160,9 +164,9 @@ t= ((n - k)//2)
 F_q= GF(q)
 canal= Canal(F_q, n, t)
 
-x= [F_q(i) for i in range(n)]
+# x= [F_q(i) for i in range(n)]
+x= list(F_q)[:n]
 m= field_random_element_n(F_q, k)
-
 
 print("Nombre de correction : ", t)
 print("message clair : ", m, "\n")
@@ -173,7 +177,7 @@ c_RS= RS.encode(m)
 c_RS_sent= canal(c_RS)
 
 x_RS_bw= RS.decode_bw(c_RS_sent)
-x_RS_bm= RS.decode_bm(c_RS_sent);
+x_RS_bm= RS.decode_bm(c_RS_sent)
 
 print("Message codé algo généré : ", c_RS)
 print("Message codé algo envoyé : ", c_RS_sent)
@@ -192,3 +196,15 @@ x_RS2= vector(x_RS2.list())
 print("Message codé verif généré: ", c_RS2)
 print("Message codé verif envoyé: ", c_RS2_sent)
 print("Message codé verif reçu  : ", x_RS2, "\n")
+
+print("--- Resultats ---")
+print("Validité de Berlekamp-Massey : ", x_RS_bm == m)
+
+
+
+
+
+
+
+
+
