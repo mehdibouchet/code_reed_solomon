@@ -1,4 +1,6 @@
 from sage.misc.prandom import randint
+from sage.coding.guruswami_sudan.interpolation import gs_interpolation_linalg
+from sage.coding.guruswami_sudan.gs_decoder import roth_ruckenstein_root_finder
 
 import random
 
@@ -145,6 +147,111 @@ class ReedSolomon:
 
         return vector( F.list() )
 
+    def decode_sd(self, u, l, r):
+        F_q= self.F_q
+        t= self.t
+        n= self.n
+        _x= self.x
+
+        R.<X,Y> = PolynomialRing(F_q, 'X,Y')
+        pts= [ (F_q(_x[i]), F_q(u[i])) for i in range(n) ]
+
+        Q= gs_interpolation_lee_osullivan(pts, l+1, (1, l), 1)
+#         Q= gs_interpolation_linalg(pts, l+1, (1, 4), 1)
+        Q= R(Q)
+
+        roots= []
+#         x = SR.var('x')
+#         Q = Q.subs(X=x)
+#         Q_y = Q.subs({'X': x})
+#         print(Q)
+#         Q_y= Q.change_ring(F_q['Y'])
+#         print(type(Q_y))
+#         print(SR(Q_y))
+
+#         Q_y= Q_y.polynomial_expression()
+#         print(Q_y)
+#         print(L(Q_y))
+
+#         roots = solve(Q_y == 0, Y)
+#         roots = Q_y.roots()
+
+#         Q_coefs = [Q.coefficient({y: i}) for i in range(Q.degree(y)+1)]
+#         print(Q)
+#         Q_y= sum(SR( Q_coefs[i] ) * y**i for i in range(len(Q_coefs)))
+#         print(Q)
+#         print(Q_coefs)
+#         print(Q_y)
+#         roots = Q_y.roots()
+#         Q_coef = Q.terms('y')
+#         Q_coef = Q_coef[::-1]
+
+#         print(Q_y)
+#         x = SR.var('x')
+#         Q= Q.subs(x=x)
+#         roots = solve(Q.subs(X=X), Y)
+#         print(Q)
+#         X = R.gens()[0]
+#         Q_y = Q(X=X)
+#         print(Q_y)
+#         roots = Q_y.roots(multiplicities=False)
+
+#         Q_y = Q.change_ring(R).subs('X', R.gen(0))
+#         X, Y = SR.var('X Y')
+#         Q_y = Q.change_ring(F_q)[0]
+#         P = P.subs(x=2)
+
+#         P.<X, Y> = PolynomialRing(F_q, 2)
+#         Q= R(2*X + 3*X*Y + 3*Y^2)
+#         print(Q)
+#         roots = []
+
+        def generate_polynomials(F_q, k):
+            P = PolynomialRing(F_q, 'X')
+            polynomials = []
+
+            for deg in range(k):
+                for coeffs in cartesian_product_iterator([F_q] * (deg + 1)):
+                    poly = P(coeffs)
+                    polynomials.append(poly)
+
+            return polynomials
+
+        polys= generate_polynomials(F_q, Q.degree(Y))
+        for P in polys:
+            if Q(X,P(X)) == 0:
+                roots.append( P )
+
+        print(roots)
+        return roots
+#         Q_symbolic = Expression(SR, Q)
+#         roots = solve(Q_symbolic, Y)
+#         roots = solve(Q == 0, Y, algorithm='sympy')
+#             print(Q_x)
+#             Q_x_roots = Q_x.roots(multiplicities=False)
+#         roots= Q.roots(Y)
+#         roots = solve(Q, Y)
+
+#             I = Ideal(Q_x)
+#             variety = I.variety()
+#             roots = [solution[y] for solution in variety]
+#             print(variety)
+
+#             roots.extend([(x, y) for y in Q_x_roots])
+
+        print(roots)
+#         roots = solve(P, P.variable(1))
+#         x, y = P.parent().gens()
+#         I = Ideal(P)
+#         variety = I.variety()
+#         roots = [solution[y] for solution in variety]
+#         print(variety)
+#         roots = P.roots(P.variable(1), field=False)
+#         roots = solve(P, P.variable(1))
+#         print(len(roots))
+#         P= R(0)
+#         for
+
 #         y= []
 #         for i in range( len(u) ):
 #             x_i= self.x[i]
@@ -178,11 +285,13 @@ c_RS_sent= canal(c_RS)
 
 x_RS_bw= RS.decode_bw(c_RS_sent)
 x_RS_bm= RS.decode_bm(c_RS_sent)
+x_RS_sd= RS.decode_sd(c_RS_sent, 5, t+2)
 
 print("Message codé algo généré : ", c_RS)
 print("Message codé algo envoyé : ", c_RS_sent)
 print("Message algo Berl-Welch  : ", x_RS_bw)
 print("Message algo Berl-Massey : ", x_RS_bm, "\n")
+print("Message algo Sudan       : ", x_RS_sd, "\n")
 
 # RS2 = codes.ReedSolomonCode(F_q, n, k)
 RS2 = codes.GeneralizedReedSolomonCode(x, k)
@@ -199,11 +308,6 @@ print("Message codé verif reçu  : ", x_RS2, "\n")
 
 print("--- Resultats ---")
 print("Validité de Berlekamp-Massey : ", x_RS_bm == m)
-
-
-
-
-
 
 
 
