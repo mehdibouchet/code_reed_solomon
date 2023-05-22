@@ -38,20 +38,25 @@ class Canal:
 #     def send_canal(x):
 #         return self(x)
 
-class ReedSolomon:
-    def __init__(self, F_q, k, x):
+class GeneraliseReedSolomon:
+    def __init__(self, F_q, k, x, y= None):
+        if y == None:
+            y= vector( [1]*len(x) )
+
         self.F_q= F_q
         self.k= k
         self.x= x
+        self.y= y
         self.n= len(x)
         self.t= ((n - k)//2)
 
     def encode(self, m):
-        C= codes.GeneralizedReedSolomonCode(self.x, self.k)
+        C= codes.GeneralizedReedSolomonCode(self.x, self.k, self.y)
 
         # Generation de la matrice de Vandermonde du Code
         G = codes.encoders.GRSEvaluationVectorEncoder(C).generator_matrix()
 #         G = codes.ReedSolomonCode(self.F_q, self.n, self.k).generator_matrix()
+
         return m * G
 
     def decode_bw(self, u):
@@ -59,11 +64,16 @@ class ReedSolomon:
         t= self.t
         n= self.n
         M= []
+        y= self.y
 
         for i in range(len(u)):
             u_i= u[i]
             x_i= self.x[i]
-            v_i= [u_i * x_i^j for j in range(t+1)] + [(-1)* (x_i)^j for j in range(n-t)]
+
+            v_exp1= [y[i] for j in range(n-t)]
+            v_exp2= [(-1)* (x_i)^j for j in range(n-t)]
+            v_i= [u_i * x_i^j for j in range(t+1)] + [v_i_exp1*v_i_exp2 for v_i_exp1,v_i_exp2 in zip(v_exp1, v_exp2)]
+
             M.append(v_i)
 
         R= PolynomialRing(F_q, 'x')
@@ -78,6 +88,7 @@ class ReedSolomon:
 
         A= R( V[:t+1, -1].list() )
         B= R( V[t+1:, -1].list() )
+
 
         F, rem = B.quo_rem(A)
 
@@ -103,9 +114,6 @@ class ReedSolomon:
 
         for x_i in _x:
             P*= (x - x_i)
-
-#         error_poly = -U
-#         print(error_poly)
 
         def ext_euclide(U):
             C= [ R(1), R(0), R(0) ]
@@ -222,7 +230,7 @@ class ReedSolomon:
             if Q(X,P(X)) == 0:
                 roots.append( P )
 
-        print(roots)
+#         print(roots)
         return roots
 #         Q_symbolic = Expression(SR, Q)
 #         roots = solve(Q_symbolic, Y)
@@ -262,24 +270,35 @@ class ReedSolomon:
 
 #         return vector(y)
 
+
 q= 11
 n= 7
 k= 3
-# k= n - t*2
 t= ((n - k)//2)
 
 F_q= GF(q)
 canal= Canal(F_q, n, t)
 
-# x= [F_q(i) for i in range(n)]
 x= list(F_q)[:n]
+y= vector( [1]*len(x) )
+
+# ReedSolomon : Berlekamp-Welch + Berlekamp Massey
+# GeneraliseRS: Berlekamp-Welch
+
+# Pour tester la version Generalize, décommenter la ligne suivante:
+# y= list(F_q)[:n]
+# y[0]= q-1
+
 m= field_random_element_n(F_q, k)
+
+print("ReedSolomon : Berlekamp-Welch + Berlekamp Massey")
+print("ReedSolomon : Berlekamp-Welch", "\n")
 
 print("Nombre de correction : ", t)
 print("message clair : ", m, "\n")
 
 
-RS= ReedSolomon(F_q, k, x)
+RS= GeneraliseReedSolomon(F_q, k, x, y)
 c_RS= RS.encode(m)
 c_RS_sent= canal(c_RS)
 
@@ -294,7 +313,7 @@ print("Message algo Berl-Massey : ", x_RS_bm, "\n")
 print("Message algo Sudan       : ", x_RS_sd, "\n")
 
 # RS2 = codes.ReedSolomonCode(F_q, n, k)
-RS2 = codes.GeneralizedReedSolomonCode(x, k)
+RS2 = codes.GeneralizedReedSolomonCode(x, k, y)
 
 c_RS2 = RS2.encode(m)
 c_RS2_sent= canal(c_RS2)
@@ -307,8 +326,6 @@ print("Message codé verif envoyé: ", c_RS2_sent)
 print("Message codé verif reçu  : ", x_RS2, "\n")
 
 print("--- Resultats ---")
+print("Validité de Berlekamp-Welch  : ", x_RS_bw == m)
 print("Validité de Berlekamp-Massey : ", x_RS_bm == m)
-
-
-
-
+print("Validité de Sudan            : ", x_RS_sd == m)
